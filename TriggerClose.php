@@ -3,7 +3,7 @@
 require_once dirname(__FILE__).'/TriggerCloseApi.php';
 
 /**
- * @author Carl Helmertz <helmertz@gmail.com
+ * @author Carl Helmertz <helmertz@gmail.com>
  */
 class TriggerClosePlugin extends MantisPlugin {
 
@@ -20,7 +20,7 @@ class TriggerClosePlugin extends MantisPlugin {
 		if(!plugin_config_get('maybe_close_active')) {
 			return false;
 		}
-		if(false) {
+		if(mt_rand(1, 4) != 3) {
 			return;
 		}
 		$this->api->close_issues_matching_criteria(

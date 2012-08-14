@@ -1,0 +1,8 @@
+TriggerClose is a plugin for the bugtracker Mantis.
+
+The plugin allows you to tell Mantis to "close all bugs marked as feedback
+which have not been modified in the last 30 days". Except that it can select
+which issues to close depending on the issue's category or status.
+
+Author: Carl Helmertz <helmertz@gmail.com>
+License: Apache v2

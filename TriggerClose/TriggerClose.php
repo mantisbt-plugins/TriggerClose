@@ -14,7 +14,6 @@ class TriggerClosePlugin extends MantisPlugin {
 	 * possibly heavy query on each page load.
 	 *
 	 * Crude and ugly alternative for a proper cronjob.
-	 * @todo create endpoint for cronjob
 	 */
 	function maybe_close_issues() {
 		if(!plugin_config_get('maybe_close_active')) {
@@ -23,12 +22,7 @@ class TriggerClosePlugin extends MantisPlugin {
 		if(mt_rand(1, 4) != 3) {
 			return;
 		}
-		$this->api->close_issues_matching_criteria(
-			plugin_config_get('categories'),
-			plugin_config_get('statuses'),
-			plugin_config_get('after_seconds'),
-			plugin_config_get('message')
-		);
+		$this->api->auto_close();
 	}
 
 	/**

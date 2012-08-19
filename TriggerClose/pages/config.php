@@ -17,7 +17,20 @@ if(!$saved_statuses) {
 	$saved_statuses = array();
 }
 
+// @todo find a corresponding function in the API
+$query = "SELECT *
+	FROM ".db_get_table('mantis_user_table')."
+	ORDER BY date_created DESC";
+$result = db_query_bound($query);
+$user_count = db_num_rows($result);
+$saved_user = plugin_config_get('user');
+
 $api = new TriggerCloseApi();
+
+if(isset($_SESSION['TriggerClose_flash_message'])) {
+	echo '<p>'.$_SESSION['TriggerClose_flash_message'].'</p>';
+	unset($_SESSION['TriggerClose_flash_message']);
+}
 
 ?>
 
@@ -35,7 +48,8 @@ $api = new TriggerCloseApi();
 <tr <?php echo helper_alternate_class()?>>
 	<td valign="top">
 		<label for="maybe_close_active">Trigger check on page loads</label>
-		<br /><span class="small">@todo note about cron job here</span>
+		<br />
+		<p class="small">Otherwise, enable <a href="#cron">cron</a>.</p>
 	</td>
 	<td valign="top">
 		<input type="checkbox" id="maybe_close_active" name="maybe_close_active" value="1" <?php echo plugin_config_get('maybe_close_active')? 'checked="checked"' : null ?> />
@@ -87,6 +101,21 @@ $api = new TriggerCloseApi();
 	</td>
 </tr>
 
+<tr <?php echo helper_alternate_class()?>>
+	<td valign="top">
+		<label for="user">Close as this user</label>
+	</td>
+	<td valign="top">
+		<select name="user" id="user">
+		<?php while($user_count--) {
+			$row = db_fetch_array($result);
+		?>
+			<option <?php if($row['id'] == $saved_user) { ?>selected="selected"<?php }?> value="<?php echo $row['id'] ?>"><?php echo $row['username'] ?></option>
+		<?php } ?>
+		</select>
+	</td>
+</tr>
+
 <tr>
 	<td class="center" colspan="2">
 		<input type="submit" class="button" value="Save" />
@@ -95,6 +124,11 @@ $api = new TriggerCloseApi();
 
 </table>
 </form>
+
+<h3 id="cron">As a cronjob</h3>
+<p>To enable cron, type <br />
+<pre>*/5 * * * * /usr/bin/env php <?php echo realpath(dirname(__FILE__).'/../TriggerCloseApi.php') ?></pre><br />
+into a crontab (for example, by typing <pre>crontab -e</pre> as a user which can execute that file.</p>
 
 <?php
 html_page_bottom();

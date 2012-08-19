@@ -1,5 +1,15 @@
 <?php
 
+function error_out($message) {
+	$_SESSION['TriggerClose_flash_message'] = $message;
+	return print_header_redirect(plugin_page('config', true));
+}
+
+if(!$_POST) {
+	// POST is empty, wrong HTTP method used
+	return error_out("Must POST to save TriggerClose settings");
+}
+
 form_security_validate('plugin_format_config_edit');
 
 auth_reauthenticate();
@@ -20,8 +30,7 @@ foreach($api->config() as $option => $default_value) {
 			$new_value = gpc_get_int_array($option, $default_value);
 			foreach($new_value as $index => $category) {
 				if(!$api->validate_category($category)) {
-					// @todo handle error
-					unset($new_value[$index]);
+					return error_out("Invalid category given");
 				}
 			}
 			break;
@@ -35,9 +44,14 @@ foreach($api->config() as $option => $default_value) {
 			$new_value = gpc_get_int_array($option, $default_value);
 			foreach($new_value as $index => $status) {
 				if(!$api->validate_status($status)) {
-					// @todo handle error
-					unset($new_value[$index]);
+					return error_out("Invalid status given");
 				}
+			}
+			break;
+		case 'user':
+			$new_value = gpc_get_int($option, $default_value);
+			if(!user_exists($new_value)) {
+				return error_out("Invalid user given");
 			}
 			break;
 
@@ -48,5 +62,7 @@ foreach($api->config() as $option => $default_value) {
 }
 
 form_security_purge('plugin_format_config_edit');
+
+$_SESSION['TriggerClose_flash_message'] = "Settings saved successfully";
 
 print_successful_redirect(plugin_page('config', true));

@@ -1,9 +1,13 @@
 <?php
 
+require_once dirname(__FILE__).'/../../core.php';
+
 class TriggerCloseApi {
 
 	const MIN_SECONDS = 300;
 	const DISABLED = 0;
+
+	private static $verbose;
 
 	/**
 	 * @return array [int id] => string label
@@ -32,17 +36,126 @@ class TriggerCloseApi {
 			RESOLVED => 'resolved'
 		);
 	}
+
+	/**
+	 * Proxy for @see close_issues_matching_criteria with criteria
+	 * from saved plugin config.
+	 *
+	 * @return array of bug_ids that were closed
+	 */
+	function auto_close() {
+		return $this->close_issues_matching_criteria(
+			plugin_config_get('categories'),
+			plugin_config_get('statuses'),
+			plugin_config_get('after_seconds'),
+			plugin_config_get('message')
+		);
+	}
+
+	/**
+	 * Controller method for triggering via cli
+	 */
+	static function cli() {
+		if(PHP_SAPI != "cli") {
+			if(!headers_sent()) {
+				header("HTTP/1.0 400 Bad Request");
+			}
+			printf("You must use %s from cli", __METHOD__);
+			exit();
+		}
+		$argv = $GLOBALS['argv'];
+
+		if(in_array("-h", $argv) || in_array("--help", $argv)) {
+			echo self::cli_usage();
+			exit(0);
+		}
+
+		if(!in_array("--run", $argv)) {
+			// make sure the script isn't run by accident, require
+			// a simple dummy argument
+			echo self::cli_usage();
+			exit(1);
+		}
+
+		// Needed since we rely on global state
+		// in plugin_config_get(), amongst others
+		plugin_push_current('TriggerClose');
+		self::$verbose = in_array("-v", $argv);
+
+		if(!self::cli_login()) {
+			echo self::cli_usage("Could not login with given user, check TriggerClose's plugin settings in the GUI");
+			exit(1);
+		}
+
+		$api = new self;
+		$closed_issues = $api->auto_close();
+		self::cli_message(sprintf("Closed %d issues:", count($closed_issues)));
+		foreach($closed_issues as $id => $summary) {
+			self::cli_message(sprintf("%d: %s", $id, $summary));
+		}
+		exit(0);
+	}
+
+	/**
+	 * Tries to login with the configured username
+	 *
+	 * @param boolean $verbosy = false
+	 * @return false
+	 */
+	private static function cli_login($verbose = false) {
+		$user_id = plugin_config_get('user');
+		if(!user_exists($user_id)) {
+			self::cli_message("User with saved ID was not found");
+			return false;
+		}
+		if(!auth_attempt_script_login(user_get_name($user_id))) {
+			self::cli_message("Could not login as user with saved ID");
+			return false;
+		}
+		return true;
+	}
+
+	private static function cli_message($string) {
+		if(self::$verbose) {
+			echo $string."\n";
+		}
+	}
+
+	/**
+	 * @param string $error = null
+	 * @return string
+	 */
+	private static function cli_usage($error = null) {
+		$usage = <<<USAGE
+TriggerCloseApi.php [options] --run
+
+Close Mantis plugins based on inactivity.
+
+
+OPTIONS
+
+	-v		Verbose output, print closed issues
+	--run		Required parameter to run script, bail out if not given
+	-h | --help	This helptext
+
+USAGE;
+		if($error) {
+			return $error."\n\n".$usage;
+		}
+		return $usage;
+	}
 	
 	/**
 	 * @param array $categories
 	 * @param array $statuses
 	 * @param int $after_seconds
 	 * @param string $message
- 	 * @return array of bug_ids that were closed
+	 * @return array [int id] => string summary
 	 * @throws InvalidArgumentException
 	 */
 	function close_issues_matching_criteria(array $categories, array $statuses, $after_seconds, $message) {
-		foreach($categories as $category) {
+		foreach($categories as $key => $category) {
+			$categories[$key] = $category = (int) $category;
 			if(!$this->validate_category($category)) {
 				throw new InvalidArgumentException("$category is an invalid category");
 			}
@@ -69,7 +182,7 @@ class TriggerCloseApi {
 		$sql = sprintf("
 			SELECT
 				bht.bug_id,
-				bht.date_modified
+				bt.summary
 			FROM
 				".db_get_table('mantis_bug_table')." AS bt
 			INNER JOIN
@@ -98,7 +211,7 @@ class TriggerCloseApi {
 		while($count--) {
 			$row = db_fetch_array($query);
 			bug_close($row['bug_id'], $message);
-			$closed[] = $row['bug_id'];
+			$closed[$row['bug_id']] = $row['summary'];
 		}
 		return $closed;
 	}
@@ -113,9 +226,10 @@ class TriggerCloseApi {
 		return array(
 			'maybe_close_active' => 0,
 			'after_seconds' => 0,
-			'message' => 'Closing automatically, stayed too long in feedback state.',
+			'message' => 'Closing automatically, stayed too long in feedback state. Feel free to re-open with additional information if you think the issue is not resolved.',
 			'categories' => array(),
-			'statuses' => array(FEEDBACK)
+			'statuses' => array(FEEDBACK),
+			'user' => 1
 		);
 	}
 
@@ -137,4 +251,8 @@ class TriggerCloseApi {
 			array_keys($this->available_statuses())
 		);
 	}
+}
+
+if(PHP_SAPI == "cli") {
+	TriggerCloseApi::cli();
 }

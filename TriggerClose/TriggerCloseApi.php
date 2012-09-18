@@ -8,6 +8,7 @@ class TriggerCloseApi {
 	const DISABLED = 0;
 
 	private static $verbose;
+	private static $dry_run;
 
 	/**
 	 * @return array [int id] => string label
@@ -70,17 +71,11 @@ class TriggerCloseApi {
 			exit(0);
 		}
 
-		if(!in_array("--run", $argv)) {
-			// make sure the script isn't run by accident, require
-			// a simple dummy argument
-			echo self::cli_usage();
-			exit(1);
-		}
-
 		// Needed since we rely on global state
 		// in plugin_config_get(), amongst others
 		plugin_push_current('TriggerClose');
-		self::$verbose = in_array("-v", $argv);
+		self::$dry_run = in_array("-n", $argv) || in_array("--dry-run", $argv);
+		self::$verbose = self::$dry_run || in_array("-v", $argv);
 
 		if(!self::cli_login()) {
 			echo self::cli_usage("Could not login with given user, check TriggerClose's plugin settings in the GUI");
@@ -127,7 +122,7 @@ class TriggerCloseApi {
 	 */
 	private static function cli_usage($error = null) {
 		$usage = <<<USAGE
-TriggerCloseApi.php [options] --run
+TriggerCloseApi.php [options]
 
 Close Mantis plugins based on inactivity.
 
@@ -135,8 +130,8 @@ Close Mantis plugins based on inactivity.
 OPTIONS
 
 	-v		Verbose output, print closed issues
-	--run		Required parameter to run script, bail out if not given
 	-h | --help	This helptext
+	-n | --dry-run	Only print what would happen, do not change any statuses
 
 USAGE;
 		if($error) {
@@ -210,7 +205,9 @@ USAGE;
 		$closed = array();
 		while($count--) {
 			$row = db_fetch_array($query);
-			bug_close($row['bug_id'], $message);
+			if(!self::$dry_run) {
+				bug_close($row['bug_id'], $message);
+			}
 			$closed[$row['bug_id']] = $row['summary'];
 		}
 		return $closed;

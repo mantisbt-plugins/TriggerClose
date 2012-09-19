@@ -83,7 +83,12 @@ class TriggerCloseApi {
 		}
 
 		$api = new self;
-		$closed_issues = $api->auto_close();
+		try {
+			$closed_issues = $api->auto_close();
+		} catch(InvalidArgumentException $e) {
+			self::cli_message($e->getMessage());
+			exit(1);
+		}
 		self::cli_message(sprintf("Closed %d issues:", count($closed_issues)));
 		foreach($closed_issues as $id => $summary) {
 			self::cli_message(sprintf("%d: %s", $id, $summary));
@@ -149,6 +154,9 @@ USAGE;
 	 * @throws InvalidArgumentException
 	 */
 	function close_issues_matching_criteria(array $categories, array $statuses, $after_seconds, $message) {
+		if(!$categories) {
+			throw new InvalidArgumentException("You must provide at least one category for me to scan for issues in");
+		}
 		foreach($categories as $key => $category) {
 			$categories[$key] = $category = (int) $category;
 			if(!$this->validate_category($category)) {
@@ -163,7 +171,8 @@ USAGE;
 		}
 
 		$after_seconds = (int) $after_seconds;
-		if(self::DISABLED == $after_seconds) {
+		if(self::DISABLED == $after_seconds && PHP_SAPI != "cli") {
+			// Let the cli version fall through to the next check
 			return array();
 		}
 		if($after_seconds < self::MIN_SECONDS) {

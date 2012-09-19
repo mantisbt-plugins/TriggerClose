@@ -34,6 +34,14 @@ foreach($api->config() as $option => $default_value) {
 				}
 			}
 			break;
+		case 'privileges':
+			$new_value = gpc_get_int_array($option, $default_value);
+			foreach($new_value as $index => $privilege) {
+				if(!$api->validate_privilege($privilege)) {
+					return error_out("Invalid privilege given");
+				}
+			}
+			break;
 		case 'maybe_close_active':
 			$new_value = (int)(boolean) gpc_get_int($option, $default_value);
 			break;

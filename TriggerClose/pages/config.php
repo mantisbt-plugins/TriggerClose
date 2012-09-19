@@ -17,6 +17,18 @@ if(!$saved_statuses) {
 	$saved_statuses = array();
 }
 
+$saved_privileges = plugin_config_get('privileges');
+$users_affected_by_privileges = 0;
+if(!$saved_privileges) {
+	$saved_privileges = array();
+} else {
+	# We sort the privileges so that [0] represents the most privileged
+	# permission entry, since user_count_level() gives us all users of
+	# that level *or higher*
+	sort($saved_privileges);
+	$users_affected_by_privileges = user_count_level($saved_privileges[0]);
+}
+
 // @todo find a corresponding function in the API
 $query = "SELECT *
 	FROM ".db_get_table('mantis_user_table')."
@@ -83,6 +95,20 @@ if(isset($_SESSION['TriggerClose_flash_message'])) {
 		<select multiple="multiple" size="10" name="categories[]" id="categories">
 		<?php foreach($api->available_categories() as $category_id => $label) {?>
 			<option <?php if(in_array($category_id, $saved_categories)) { ?>selected="selected"<?php }?> value="<?php echo $category_id ?>"><?php echo $label ?></option>
+		<?php } ?>
+		</select>
+	</td>
+</tr>
+
+<tr <?php echo helper_alternate_class()?>>
+	<td valign="top">
+		<label for="privileges">Close issues assigned to a member included in the following groups</label><br />
+		<?php echo $users_affected_by_privileges; ?> users in the selected groups
+	</td>
+	<td valign="top">
+		<select multiple="multiple" size="10" name="privileges[]" id="privileges">
+		<?php foreach($api->available_privileges() as $privilege_id => $label) {?>
+			<option <?php if(in_array($privilege_id, $saved_privileges)) { ?>selected="selected"<?php }?> value="<?php echo $privilege_id ?>"><?php echo $label ?></option>
 		<?php } ?>
 		</select>
 	</td>

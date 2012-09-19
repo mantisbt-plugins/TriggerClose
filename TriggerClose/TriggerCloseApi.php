@@ -28,6 +28,20 @@ class TriggerCloseApi {
 	/**
 	 * @return array [int id] => string label
 	 */
+	function available_privileges() {
+		return array(
+			VIEWER => 'viewer',
+			REPORTER => 'reporter',
+			UPDATER => 'updater',
+			DEVELOPER => 'developer',
+			MANAGER => 'manager',
+			ADMINISTRATOR => 'administrator'
+		);
+	}
+
+	/**
+	 * @return array [int id] => string label
+	 */
 	function available_statuses() {
 		return array(
 			FEEDBACK => 'feedback',
@@ -48,6 +62,7 @@ class TriggerCloseApi {
 		return $this->close_issues_matching_criteria(
 			plugin_config_get('categories'),
 			plugin_config_get('statuses'),
+			plugin_config_get('privileges'),
 			plugin_config_get('after_seconds'),
 			plugin_config_get('message')
 		);
@@ -153,7 +168,7 @@ USAGE;
 	 * @return array [int id] => string summary
 	 * @throws InvalidArgumentException
 	 */
-	function close_issues_matching_criteria(array $categories, array $statuses, $after_seconds, $message) {
+	function close_issues_matching_criteria(array $categories, array $statuses, array $privileges, $after_seconds, $message) {
 		if(!$categories) {
 			throw new InvalidArgumentException("You must provide at least one category for me to scan for issues in");
 		}
@@ -195,6 +210,12 @@ USAGE;
 					bht.bug_id = bt.id
 				AND
 					bht.date_modified < %d
+			INNER JOIN
+				".db_get_table('mantis_user_table')." AS ut
+				ON
+					bt.handler_id = ut.id
+				AND
+					ut.access_level IN (%s)
 			WHERE
 				bt.status IN (%s)
 				AND
@@ -202,6 +223,7 @@ USAGE;
 			GROUP BY
 				bht.bug_id",
 				time() - $after_seconds,
+				"'".implode("', '", $privileges)."'",
 				"'".implode("', '", $statuses)."'",
 				"'".implode("', '", $categories)."'"
 
@@ -229,12 +251,17 @@ USAGE;
 	 * @return array
 	 */
 	function config() {
+		$privileges = $this->available_privileges();
+		$admin = ADMINISTRATOR;
+		unset($privileges[$admin]);
 		return array(
 			'maybe_close_active' => 0,
 			'after_seconds' => 0,
 			'message' => 'Closing automatically, stayed too long in feedback state. Feel free to re-open with additional information if you think the issue is not resolved.',
 			'categories' => array(),
+			'userrights' => array(),
 			'statuses' => array(FEEDBACK),
+			'privileges' => $privileges,
 			'user' => 1
 		);
 	}
@@ -245,6 +272,17 @@ USAGE;
 	 */
 	function validate_category($category_id) {
 		return category_exists($category_id);
+	}
+
+	/**
+	 * @param int $status
+	 * @retun boolean
+	 */
+	function validate_privilege($privilege) {
+		return in_array(
+			$privilege,
+			array_keys($this->available_privileges())
+		);
 	}
 
 	/**

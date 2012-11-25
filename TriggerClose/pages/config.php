@@ -153,7 +153,7 @@ if(isset($_SESSION['TriggerClose_flash_message'])) {
 
 <h3 id="cron">As a cronjob</h3>
 <p>To enable cron, type <br />
-<pre>*/5 * * * * /usr/bin/env php <?php echo realpath(dirname(__FILE__).'/../TriggerCloseApi.php') ?></pre><br />
+<pre>*/5 * * * * /usr/bin/env php <?php echo realpath(dirname(__FILE__).'/../TriggerCloseCli.php') ?></pre><br />
 into a crontab (for example, by typing <pre>crontab -e</pre> as a user which can execute that file.</p>
 
 <?php

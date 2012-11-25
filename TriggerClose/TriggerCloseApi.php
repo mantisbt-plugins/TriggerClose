@@ -226,7 +226,6 @@ USAGE;
 				"'".implode("', '", $privileges)."'",
 				"'".implode("', '", $statuses)."'",
 				"'".implode("', '", $categories)."'"
-
 		);
 		$query = db_query($sql);
 		$count = db_num_rows($query);
@@ -267,7 +266,7 @@ USAGE;
 	}
 
 	/**
- 	 * @param int $category_id
+	 * @param int $category_id
 	 * @return boolean
 	 */
 	function validate_category($category_id) {
@@ -295,8 +294,4 @@ USAGE;
 			array_keys($this->available_statuses())
 		);
 	}
-}
-
-if(PHP_SAPI == "cli") {
-	TriggerCloseApi::cli();
 }

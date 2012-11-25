@@ -6,3 +6,8 @@ which issues to close depending on the issue's category or status.
 
 Author: Carl Helmertz <helmertz@gmail.com>
 License: Apache v2
+
+Changelog:
+
+ 0.1:
+   - Call it through CLI via TriggerCloseCli.php instead of TriggerCloseApi.php
